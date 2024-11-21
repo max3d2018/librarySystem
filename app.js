@@ -18,9 +18,8 @@ class SearchUI extends UI {
 
   search() {
     if (!this.searchField.value) return;
-
     const result = bookManger.searchBook(this.searchField.value);
-    console.log(result);
+    modal.showModal(result, true);
   }
 }
 
@@ -41,7 +40,7 @@ class NewBookUI extends UI {
 
     bookManger.addBook(book);
     this.eraseFields();
-    modal.showModalOfCreatedBook(book);
+    modal.showModal(book);
     this.addBookToUI(book);
   }
 
@@ -52,40 +51,61 @@ class NewBookUI extends UI {
     this.isReadCb.checked = "";
   }
 
-  addBookToUI(book) {
-    const bookUi = ` <div
-        class="p-2 border border-2 border-slate-900 p-4 rounded-lg space-y-2"
-      >
-        <p class="w-25">
-          <span
-            class="bg-gray-300 text-sm p-1 inline-block w-16 text-red-400 text-center font-medium"
-            >نام
-          </span>
-          ${book.title}
-        </p>
-        <p class="">
-          <span
-            class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
-            >نویسنده
-          </span>
-          ${book.author}
-        </p>
-        <p class="">
-          <span
-            class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
-            >شناسه
-          </span>
-          ${book.bookId}
-        </p>
-        <p class="">
-          <span
-            class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
-            >خوانده
-          </span>
-           ${book.isRead ? "بله" : "خیر"}
-        </p>
-      </div>`;
-    this.sectionBooks.insertAdjacentHTML("afterbegin", bookUi);
+  getCreatedBookHtml(book) {
+    const bookHtml = ` <div
+    class="p-2 border border-2 border-slate-900 p-4 rounded-lg space-y-2"
+  >
+    <p class="w-25">
+      <span
+        class="bg-gray-300 text-sm p-1 inline-block w-16 text-red-400 text-center font-medium"
+        >نام
+      </span>
+      ${book.title}
+    </p>
+    <p class="">
+      <span
+        class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
+        >نویسنده
+      </span>
+      ${book.author}
+    </p>
+    <p class="">
+      <span
+        class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
+        >شناسه
+      </span>
+      ${book.bookId}
+    </p>
+    <p class="">
+      <span
+        class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
+        >خوانده
+      </span>
+       ${book.isRead ? "بله" : "خیر"}
+    </p>
+
+    ${
+      !book.isRead
+        ? `<button id='bookReadState' data-bookId=${book.bookId} class = "bg-indigo-500 p-1 text-md text-white rounded-lg w-full">خواندید؟</button>`
+        : ""
+    }
+  </div>`;
+
+    return bookHtml;
+  }
+
+  addBookToUI(book, fromShowBooks = false) {
+    const bookUIHtml = this.getCreatedBookHtml(book);
+    if (fromShowBooks) return bookUIHtml;
+    this.sectionBooks.insertAdjacentHTML("afterbegin", bookUIHtml);
+  }
+
+  showBooks(books) {
+    let html = "";
+    for (let book of books) {
+      html += this.addBookToUI(book, true);
+    }
+    this.sectionBooks.innerHTML = html;
   }
 }
 
@@ -95,7 +115,21 @@ class ModalUI extends UI {
     this.body.addEventListener("click", this.closeModal.bind(this));
   }
 
-  createModalHtml(book) {
+  createModalHtml(book, searched = false) {
+    let showingContent;
+    if (typeof book === "string") {
+      showingContent = `<h1 class="text-xl">کتابی یافت نشد</h1>`;
+    } else {
+      showingContent = `<h1 class="text-xl">${
+        searched ? "کتاب با مشخصات زیر موجود است" : "کتاب با مشخصات زیر ثبت شد"
+      }</h1> <div class="space-y-2">
+                  <p>نام : ${book.title}</p>
+                  <p>نویسنده : ${book.author}</p>
+                  <p>${book.bookId}: 23413</p>
+                  <p>خوانده؟ : ${book.isRead ? "بله" : "خیر"}</p>
+                </div>`;
+    }
+
     const modalHTML = `<div
     id='modal'
     class="relative z-10 "
@@ -120,13 +154,7 @@ class ModalUI extends UI {
               <div
                 class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left space-y-2 text-center"
               >
-                <h1 class="text-xl">کتاب با مشخصات زیر ثبت شد</h1>
-                <div class="space-y-2">
-                  <p>نام : ${book.title}</p>
-                  <p>نویسنده : ${book.author}</p>
-                  <p>${book.bookId}: 23413</p>
-                  <p>خوانده؟ : ${book.isRead ? "بله" : "خیر"}</p>
-                </div>
+               ${showingContent}
               </div>
             </div>
           </div>
@@ -149,8 +177,8 @@ class ModalUI extends UI {
     return modalHTML;
   }
 
-  showModalOfCreatedBook(book) {
-    const modalHTML = this.createModalHtml(book);
+  showModal(book, searched) {
+    const modalHTML = this.createModalHtml(book, searched);
     this.body.insertAdjacentHTML("afterbegin", modalHTML);
   }
 
@@ -170,15 +198,63 @@ class Book {
   }
 }
 
+class SectionBooksUI extends UI {
+  constructor() {
+    super();
+    this.sectionBooks.addEventListener(
+      "click",
+      this.changeReadState.bind(this)
+    );
+  }
+
+  changeReadState(e) {
+    if (e.target.id === "bookReadState") {
+      console.log(bookManger.books);
+      const id = e.target?.getAttribute("data-bookid");
+      const book = bookManger.getBook(id);
+      book.isRead = true;
+      bookUI.showBooks(bookManger.books);
+    }
+  }
+}
+
 class BooksManager {
-  books = [];
+  books = [
+    { bookId: 1, title: "The Alchemist", author: "Paulo Coelho", isRead: true },
+    { bookId: 2, title: "1984", author: "George Orwell", isRead: false },
+    {
+      bookId: 3,
+      title: "To Kill a Mockingbird",
+      author: "Harper Lee",
+      isRead: true,
+    },
+    {
+      bookId: 4,
+      title: "Pride and Prejudice",
+      author: "Jane Austen",
+      isRead: false,
+    },
+    {
+      bookId: 5,
+      title: "The Great Gatsby",
+      author: "F. Scott Fitzgerald",
+      isRead: false,
+    },
+  ];
+
+  getBook(id) {
+    const book = this.books.find((bookEl) => {
+      if (String(bookEl.bookId) === id) return true;
+      return false;
+    });
+    return book;
+  }
 
   addBook(book) {
     this.books.push(book);
   }
 
   searchBook(titleOrAuthor) {
-    console.log(titleOrAuthor);
     const book = this.books.find((el) => {
       console.log(el);
       if (el.title === titleOrAuthor || el.author === titleOrAuthor)
@@ -197,3 +273,5 @@ const modal = new ModalUI();
 const bookUI = new NewBookUI();
 const searchUI = new SearchUI();
 const bookManger = new BooksManager();
+const sectionBookUI = new SectionBooksUI();
+bookUI.showBooks(bookManger.books);

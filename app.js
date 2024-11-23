@@ -11,6 +11,78 @@ class UI {
   body = document.querySelector("body");
 }
 
+class AlertUI extends UI {
+  showAlert(message) {
+    const alertHTML = `
+      <div id="alert" class="fixed top-0 left-0 right-0 w-full transform duration-300 ease-in-out translate-y-0 z-50">
+        <div class="max-w-full mx-auto p-4">
+          <div class="bg-gradient-to-r from-red-500 to-pink-500 rounded-lg shadow-lg overflow-hidden">
+            <div class="p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 4.75L19.25 9L12 13.25L4.75 9L12 4.75Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                      <path d="M4.75 15L12 19.25L19.25 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                  </div>
+                  <div class="mr-3">
+                    <h3 class="text-white text-lg font-medium">خطا در ثبت کتاب</h3>
+                    <div class="text-red-100 text-sm mt-1">${message}</div>
+                  </div>
+                </div>
+                <div>
+                  <button type="button" class="text-white hover:text-red-100 focus:outline-none" onclick="this.closest('#alert').remove()">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="h-1 w-full bg-red-200">
+              <div class="h-full bg-white w-full animate-shrink"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes shrink {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        .animate-shrink {
+          animation: shrink 3s linear forwards;
+        }
+      </style>`;
+
+    // حذف alert قبلی اگر وجود داشته باشد
+    const existingAlert = document.querySelector("#alert");
+    if (existingAlert) {
+      existingAlert.remove();
+    }
+
+    // اضافه کردن alert جدید
+    this.body.insertAdjacentHTML("afterbegin", alertHTML);
+
+    // اضافه کردن کلاس برای انیمیشن ورود
+    const alert = document.querySelector("#alert");
+    setTimeout(() => {
+      alert?.classList.add("translate-y-0");
+    }, 1);
+
+    // حذف alert بعد از 3 ثانیه
+    setTimeout(() => {
+      const alert = document.querySelector("#alert");
+      if (alert) {
+        alert.classList.add("opacity-0", "-translate-y-full");
+        setTimeout(() => alert.remove(), 300);
+      }
+    }, 3000);
+  }
+}
+
+// بقیه کدها بدون تغییر می‌مانند...
 class BookFilterUI extends UI {
   fitlerOnBooks = "all";
   constructor() {
@@ -42,14 +114,19 @@ class NewBookUI extends UI {
     super();
     this.showBooks(books);
     this.addBtn.addEventListener("click", this.addBookUI.bind(this));
+    this.alert = new AlertUI();
   }
+
   addBookUI() {
     const authorVal = this.author?.value;
     const titleVal = this.title?.value;
     const bookIdVal = this.bookId?.value;
     const isRead = this.isReadCb?.checked;
 
-    if (!authorVal || !titleVal || !bookIdVal) return;
+    if (!authorVal || !titleVal || !bookIdVal) {
+      this.alert.showAlert("همه موارد باید تکمیل شوند ");
+      return;
+    }
 
     const book = new Book(authorVal, titleVal, bookIdVal, isRead);
 
@@ -58,6 +135,9 @@ class NewBookUI extends UI {
       modal.showModal(book);
       this.addBookToUI(book);
       bookManger.save();
+    } else {
+      // نمایش پیغام خطا در صورت تکراری بودن کتاب
+      this.alert.showAlert("این کتاب قبلاً در سیستم ثبت شده است!");
     }
   }
 

@@ -7,7 +7,21 @@ class UI {
   addBtn = document.querySelector("#add-btn");
   searchBtn = document.querySelector("#search-btn");
   sectionBooks = document.querySelector("#books");
+  bookFilterSelect = document.querySelector("#bookFilter");
   body = document.querySelector("body");
+}
+
+class BookFilterUI extends UI {
+  fitlerOnBooks = "all";
+  constructor() {
+    super();
+    this.bookFilterSelect.addEventListener("change", this.filter.bind(this));
+  }
+
+  filter(e) {
+    this.fitlerOnBooks = e.target.value;
+    bookUI.showBooks(bookManger.getBooks());
+  }
 }
 
 class SearchUI extends UI {
@@ -24,24 +38,27 @@ class SearchUI extends UI {
 }
 
 class NewBookUI extends UI {
-  constructor() {
+  constructor(books) {
     super();
+    this.showBooks(books);
     this.addBtn.addEventListener("click", this.addBookUI.bind(this));
   }
   addBookUI() {
-    const authorVal = this.author.value;
-    const titleVal = this.title.value;
-    const bookIdVal = this.bookId.value;
-    const isRead = this.isReadCb.checked;
+    const authorVal = this.author?.value;
+    const titleVal = this.title?.value;
+    const bookIdVal = this.bookId?.value;
+    const isRead = this.isReadCb?.checked;
 
     if (!authorVal || !titleVal || !bookIdVal) return;
 
     const book = new Book(authorVal, titleVal, bookIdVal, isRead);
 
-    bookManger.addBook(book);
-    this.eraseFields();
-    modal.showModal(book);
-    this.addBookToUI(book);
+    if (bookManger.addBook(book)) {
+      this.eraseFields();
+      modal.showModal(book);
+      this.addBookToUI(book);
+      bookManger.save();
+    }
   }
 
   eraseFields() {
@@ -51,45 +68,36 @@ class NewBookUI extends UI {
     this.isReadCb.checked = "";
   }
 
-  getCreatedBookHtml(book) {
-    const bookHtml = ` <div
-    class="p-2 border border-2 border-slate-900 p-4 rounded-lg space-y-2"
-  >
-    <p class="w-25">
-      <span
-        class="bg-gray-300 text-sm p-1 inline-block w-16 text-red-400 text-center font-medium"
-        >نام
-      </span>
-      ${book.title}
+  getCreatedBookHtml({ title, author, bookId, isRead }) {
+    const bookHtml = `<div class="bg-white rounded-lg shadow-lg p-4 space-y-4 border border-gray-200">
+  <div class="flex items-center justify-between">
+    <h3 class="text-lg font-bold text-indigo-600">${title}</h3>
+    <span class="text-sm text-gray-500">شناسه: ${bookId}</span>
+  </div>
+  <div class="text-gray-700">
+    <p class="flex items-center space-x-2">
+      <span class="font-medium text-gray-600">نویسنده:</span>
+      <span>${author}</span>
     </p>
-    <p class="">
-      <span
-        class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
-        >نویسنده
+    <p class="flex items-center space-x-2">
+      <span class="font-medium text-gray-600">وضعیت:</span>
+      <span class="${
+        isRead ? "text-green-600 font-semibold" : "text-red-600 font-semibold"
+      }">
+        ${isRead ? "خوانده شده" : "خوانده نشده"}
       </span>
-      ${book.author}
     </p>
-    <p class="">
-      <span
-        class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
-        >شناسه
-      </span>
-      ${book.bookId}
-    </p>
-    <p class="">
-      <span
-        class="bg-gray-300 p-1 text-sm inline-block w-16 text-red-400 text-center font-medium"
-        >خوانده
-      </span>
-       ${book.isRead ? "بله" : "خیر"}
-    </p>
-
-    ${
-      !book.isRead
-        ? `<button id='bookReadState' data-bookId=${book.bookId} class = "bg-indigo-500 p-1 text-md text-white rounded-lg w-full">خواندید؟</button>`
-        : ""
-    }
-  </div>`;
+  </div>
+  ${
+    !isRead
+      ? `<button id='bookReadState' data-bookId="${bookId}" 
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-center font-medium transition duration-150">
+          علامت خوانده شده
+        </button>`
+      : ""
+  }
+</div>
+`;
 
     return bookHtml;
   }
@@ -123,56 +131,63 @@ class ModalUI extends UI {
       showingContent = `<h1 class="text-xl">${
         searched ? "کتاب با مشخصات زیر موجود است" : "کتاب با مشخصات زیر ثبت شد"
       }</h1> <div class="space-y-2">
-                  <p>نام : ${book.title}</p>
-                  <p>نویسنده : ${book.author}</p>
-                  <p>${book.bookId}: 23413</p>
-                  <p>خوانده؟ : ${book.isRead ? "بله" : "خیر"}</p>
+                  <p>نام : ${book?.title}</p>
+                  <p>نویسنده : ${book?.author}</p>
+                  <p>${book?.bookId}: 23413</p>
+                  <p>خوانده؟ : ${book?.isRead ? "بله" : "خیر"}</p>
                 </div>`;
     }
 
     const modalHTML = `<div
-    id='modal'
-    class="relative z-10 "
-    aria-labelledby="modal-title"
-    role="dialog"
-    aria-modal="true"
-  >
-    <div
-      class="fixed inset-0 bg-gray-500/75 transition-opacity"
-      aria-hidden="true"
-    ></div>
+  id="modal"
+  class="fixed inset-0 flex items-center justify-center bg-black/50 z-50 backdrop-blur-md transition-opacity"
+  role="dialog"
+  aria-labelledby="modal-title"
+  aria-modal="true"
+>
+  <!-- Background Overlay -->
+  <div
+    class="absolute inset-0 bg-black opacity-40 transition-opacity"
+    aria-hidden="true"
+  ></div>
 
-    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
-      <div
-        class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"
+  <!-- Modal Content -->
+  <div
+    class="relative bg-white rounded-lg shadow-lg transform transition-all w-full max-w-md mx-4 sm:mx-auto"
+  >
+    <!-- Modal Header -->
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+      <h2 id="modal-title" class="text-lg font-semibold text-gray-800">
+      </h2>
+      <button
+        id="closeModalBtn"
+        type="button"
+        class="text-gray-500 hover:text-gray-800 focus:outline-none"
       >
-        <div
-          class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-        >
-            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div
-                class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left space-y-2 text-center"
-              >
-               ${showingContent}
-              </div>
-            </div>
-          </div>
-          <div
-            class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6"
-          >
-            <button
-              id = 'closeModalBtn'
-              type="button"
-              class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-            >
-              بستن
-            </button>
-          </div>
-        </div>
+        ✕
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="px-6 py-4">
+      <div class="space-y-4 text-gray-700">
+        ${showingContent || "جزئیات در اینجا نمایش داده می‌شود."}
       </div>
     </div>
-  </div>`;
+
+    <!-- Modal Footer -->
+    <div class="px-6 py-3 bg-gray-50 flex justify-end space-x-2">
+      <button
+        id="closeModalBtn"
+        type="button"
+        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:ring-2 focus:ring-indigo-500"
+      >
+        تایید
+      </button>
+    </div>
+  </div>
+</div>
+`;
 
     return modalHTML;
   }
@@ -209,56 +224,78 @@ class SectionBooksUI extends UI {
 
   changeReadState(e) {
     if (e.target.id === "bookReadState") {
-      console.log(bookManger.books);
       const id = e.target?.getAttribute("data-bookid");
       const book = bookManger.getBook(id);
       book.isRead = true;
-      bookUI.showBooks(bookManger.books);
+      bookUI.showBooks(bookManger.getBooks());
+      bookManger.save();
     }
   }
 }
 
 class BooksManager {
-  books = [
-    { bookId: 1, title: "The Alchemist", author: "Paulo Coelho", isRead: true },
-    { bookId: 2, title: "1984", author: "George Orwell", isRead: false },
-    {
-      bookId: 3,
-      title: "To Kill a Mockingbird",
-      author: "Harper Lee",
-      isRead: true,
-    },
-    {
-      bookId: 4,
-      title: "Pride and Prejudice",
-      author: "Jane Austen",
-      isRead: false,
-    },
-    {
-      bookId: 5,
-      title: "The Great Gatsby",
-      author: "F. Scott Fitzgerald",
-      isRead: false,
-    },
-  ];
+  books = [];
+
+  constructor() {
+    this.load();
+  }
+
+  save() {
+    localStorage.setItem("books", JSON.stringify(this.books));
+  }
+
+  load() {
+    this.books = JSON.parse(localStorage.getItem("books")) || [];
+  }
+
+  getBooks() {
+    let books = [...this.books];
+    switch (bookFilterUI.fitlerOnBooks) {
+      case "all":
+        books = this.books;
+        break;
+      case "read":
+        books = this.books.filter(({ isRead }) => isRead === true);
+        break;
+      case "notRead":
+        books = this.books.filter(({ isRead }) => isRead !== true);
+        break;
+    }
+
+    return books;
+  }
 
   getBook(id) {
-    const book = this.books.find((bookEl) => {
-      if (String(bookEl.bookId) === id) return true;
+    const book = this.books.find(({ bookId }) => {
+      if (String(bookId) === id) return true;
       return false;
     });
     return book;
   }
 
+  isRepeated(book) {
+    return this.books.find((bookEl) => {
+      if (
+        bookEl.title === book.title &&
+        bookEl.author === book.author &&
+        bookEl.bookId === book.bookId
+      )
+        return bookEl;
+    });
+  }
+
   addBook(book) {
-    this.books.push(book);
+    if (!this.isRepeated(book)) {
+      this.books.push(book);
+      return true;
+    }
+
+    return false;
   }
 
   searchBook(titleOrAuthor) {
-    const book = this.books.find((el) => {
-      console.log(el);
-      if (el.title === titleOrAuthor || el.author === titleOrAuthor)
-        return true;
+    const book = this.books.find(({ title, author }) => {
+      if (title === titleOrAuthor || author === titleOrAuthor) return true;
     });
 
     if (book) return book;
@@ -269,9 +306,9 @@ class BooksManager {
 
 // Initialization
 
-const modal = new ModalUI();
-const bookUI = new NewBookUI();
-const searchUI = new SearchUI();
 const bookManger = new BooksManager();
+const modal = new ModalUI();
+const bookFilterUI = new BookFilterUI();
+const bookUI = new NewBookUI(bookManger.getBooks());
+const searchUI = new SearchUI();
 const sectionBookUI = new SectionBooksUI();
-bookUI.showBooks(bookManger.books);
